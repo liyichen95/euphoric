@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Euphoric</title>
+    <script src="https://zimjs.org/cdn/1.2.4/createjs.js"></script>
+    <script src="https://zimjs.org/cdn/10.8.0/zim.js"></script>
+    <script src="https://zimjs.org/cdn/Box2dWeb-2.1.a.3.min.js"></script>
+    <script src="https://zimjs.org/cdn/physics_2.0.js"></script>
+    <script src="https://zimjs.org/cdn/game_2.2.js"></script>
+
+    <script>
+        // https://zimjs.com - JavaScript Canvas Framework - Code Creativity!
+
+        var scaling = "fit";
+        var width = 1920;
+        var height = 1080;
+        var color = "#AC1D41";
+        var outerColor = dark;
+        var assets = [
+            // steve's assets
+            "introBackground.png",
+            "introEmitter.png",
+            "introFlow.png",
+            "winBg.png",
+            "lostBg.png",
+            "winVirus.png",
+            "lostVirus.png",
+            "underwater.mp3",
+            "backgroundMusic.mp3",
+            "click.wav",
+            "bite.mp3",
+            "pop.wav",
+            "gas.mp3",
+            {
+                font: "Lacquer",
+                src: "https://fonts.googleapis.com/css?family=Lacquer&display=swap"
+            }
+        ];
+        var path = "assets/";
+
+        const frame = new zim.Frame(scaling, width, height, color, outerColor, assets, path);
+        frame.on("ready", function () {
+            console.log("frame ready");
+            var stage = frame.stage;
+            var stageW = frame.width;
+            var stageH = frame.height;
+
+            //intro
+            function makeIntro() {
+                var intro = new Container(stageW, stageH).addTo();
+                //background image
+                frame.asset("introBackground.png").sca(1).addTo(intro).center();
+                //introflow circles
+                var introFlow = frame.asset("introFlow.png").center()
+                var scroller = new Scroller({ backing: introFlow, horizontal: false });
+
+                //emitter
+                var particles = new Emitter({
+                    obj: [
+                        frame.asset("introEmitter.png")
+                    ],
+                    random: { scale: { min: 0.1, max: 1 }, opacity: { min: 0.1, max: 1 } },
+                    num: 1,
+                    interval: 250, // default
+                    life: 10000,
+                    decayTime: 1000, // default
+                    gravity: 0,
+                    force: 1,
+                    cache: mobile(), // default
+                })
+                    .centerReg(intro)
+                    .sca(2)
+                    .alp(0.001)
+                    
+
+
+                // Title label 
+                var title = new Label({
+                    font: "Lacquer",
+                    text: "Euphoric",
+                    size: 100,
+                    color: "#fff",
+                    backgroundColor: "#AC1D41",
+                    paddingHorizontal: 80,
+                    paddingVertical: 60,
+                    corner: 50,
+                    fontOptions: "bold",
+                    gradient:.3
+                })
+                    .pos(0, 100, CENTER)
+                    // .ske(10)
+                    .alp(0)
+                    .animate({
+                        props: {
+                            alpha: 1
+                        },
+                        wait: 200
+                    })
+                    .addTo(intro)
+                    ;
+                //instruction
+                var instructions = new Label({
+                    text: "Quickly!\n Use the left and right arrow keys to pick your path.\n Click the pathway you want to take.\n Destory 12 red blood cells to win the game!\n Use the arrow keys to navigate your way to victory!",
+                    lineHeight: 70,
+                    align: "center",
+                    size: 40,
+                    color: "white",
+                    backgroundColor: "#D2899B",
+                    paddingHorizontal: 40,
+                    paddingVertical: 40,
+                    corner: 20,
+                    fontOptions: "bold"
+                }).centerReg(intro).pos(null, 350, CENTER);
+
+                var label = new Label({
+                    text: "START",
+                    size: 48,
+                    color: "#AC1D41",
+                    fontOptions: "bold"
+                });
+                var startBtn = new Button({
+                    label: label,
+                    width: 400,
+                    height: 150,
+                    backgroundColor: "white",
+                    borderWidth: 0,
+                    rollColor: "#AC1D41",
+                    rollBackgroundColor: "#E1C7CB",
+                    corner: 50,
+
+                })
+                    .centerReg(intro)
+                    .pos(null, 870, CENTER)
+                    .tap(function () {
+                        zgo("level.html");
+                        
+                        intro
+                            .cache()
+                            .animate({
+                                props: {
+                                    y: -stageH
+                                },
+                                time: 800,
+                            });
+                        });
+            }
+            makeIntro(frame);
+
+            stage.update();
+        }); // end of ready
+
+    </script>
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
+</head>
+
+<body></body>
+
+</html>

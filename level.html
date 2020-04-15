@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Euphoric - 3D portion</title>
+        <style>
+            body {margin: 0;
+            background: rgba(0, 151, 19, 0);
+        }
+            canvas {
+                display: block;
+            }
+        </style>
+        <script src="https://zimjs.org/cdn/1.2.4/createjs.js"></script>
+        <script src="https://zimjs.org/cdn/10.8.0/zim.js"></script>
+        <script src="js/three.js"></script>
+
+    </head>
+    <body>
+
+        <script>
+var scaling = "fit";
+var width = 1920;
+var height = 1080;
+var color = "#AC1D41";
+var outerColor = dark;
+var assets = [
+    "introBackground.png",
+    "introFlow.png",
+    "introEmitter.png",
+    "underwater.mp3",
+    "backgroundMusic.mp3"
+    ];
+var path = "assets/";
+
+const frame = new zim.Frame(scaling, width, height, color, outerColor, assets, path);
+
+
+frame.on("ready", function () {
+
+    console.log("frame ready");
+    frame.canvas.style.zIndex =-1;
+    frame.canvas.style.position = "absolute";
+    asset("backgroundMusic.mp3").play();
+    asset("underwater.mp3").play();
+
+    var stage = frame.stage;
+    var stageW = frame.width;
+    var stageH = frame.height;
+
+
+    function makeIntro() {
+
+        var intro = new Container(stageW, stageH).addTo();
+
+        frame.asset("introBackground.png").sca(1).addTo(intro).center();
+
+        var introFlow = frame.asset("introFlow.png").center();
+
+        var scroller = new Scroller({ backing: introFlow, horizontal: false });
+    }
+    makeIntro(frame);
+    stage.update();
+
+        var portal1 = new Circle(25, pink)
+        .center()
+        .pos(500,650)
+        .sca(0)
+        .animate({props:{scale:8}, time:10500});
+        stage.update();
+
+        var portal2 = new Circle(25, pink)
+        .center()
+        .pos(950,600)
+        .sca(0)
+        .animate({props:{scale:6.5}, time:10500});
+        stage.update();
+
+        var portal3 = new Circle(25, pink)
+        .center()
+        .pos(1400,650)
+        .sca(0)
+        .animate({props:{scale:8}, time:10500});
+
+
+});
+
+</script>
+        <script>
+
+/*global THREE*/
+
+window.addEventListener("DOMContentLoaded", () => {
+
+var sceneWidth;
+var sceneHeight;
+var camera;
+var scene;
+var renderer;
+var sun;
+var ground;
+//var orbitControl;
+var rollingGroundSphere;
+var virusSphere;
+var rollingSpeed=0.005;
+var virusRollingSpeed;
+var worldRadius=26;
+var virusRadius=0.2;
+var sphericalHelper;
+var pathAngleValues;
+var virusBaseY=2.2;
+var bounceValue=0;
+var gravity=0.004;
+var leftLane=-1;
+var rightLane=1;
+var middleLane=0;
+var currentLane;
+var clock;
+var circle;
+var circle2;
+var circle3;
+//var 
+var cellReleaseInterval=0.3;
+var lastCellReleaseTime=0;
+var cellsInPath;
+var cellsPool;
+var particleGeometry;
+var particleCount=20;
+var particles;
+
+
+init();
+
+function init() {
+    // set up the scene
+    createScene();
+
+    //call game loop
+    update();
+}
+
+function createScene(){
+    
+    cellsInPath=[];
+    cellsPool=[];
+    clock=new THREE.Clock();
+    clock.start();
+    virusRollingSpeed=(rollingSpeed*worldRadius/virusRadius)/5;
+    sphericalHelper = new THREE.Spherical();
+    pathAngleValues=[1.52,1.57,1.62];
+    sceneWidth=window.innerWidth;
+    sceneHeight=window.innerHeight;
+    scene = new THREE.Scene();//the 3d scene
+    scene.fog = new THREE.FogExp2( 0xf0fff0, 0.14 );
+    camera = new THREE.PerspectiveCamera( 60, sceneWidth / sceneHeight, 0.1, 1000 );
+    renderer = new THREE.WebGLRenderer({alpha:true, antialias:true}); 
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setSize( sceneWidth, sceneHeight );
+    document.body.appendChild(renderer.domElement);    
+
+    createCellsPool();
+    addWorld();
+    addVirus();
+    addLight();
+
+    
+    camera.position.z = 6.5;
+    camera.position.y = 2.5;
+    window.addEventListener('resize', onWindowResize, false);//resize callback
+
+    document.onkeydown = handleKeyDown;
+    }
+    var pMaterial = new THREE.ParticleBasicMaterial({
+      color: 0xfffafa,
+      size: 0.2
+    });
+    particles = new THREE.Points( particleGeometry, pMaterial );
+    scene.add( particles );
+    particles.visible=false;
+
+function createCellsPool(){
+    var maxCellsInPool=20;
+    var newCell;
+    for(var i=0; i<maxCellsInPool;i++){
+        newCell=createCell();
+        cellsPool.push(newCell);
+    }
+}
+function handleKeyDown(keyEvent){
+    var validMove=true;
+    if ( keyEvent.keyCode === 37) {//left
+        if(currentLane==middleLane){
+            currentLane=leftLane;
+        }else if(currentLane==rightLane){
+            currentLane=middleLane;
+        }else{
+            validMove=false;    
+        }
+    } else if ( keyEvent.keyCode === 39) {//right
+        if(currentLane==middleLane){
+            currentLane=rightLane;
+        }else if(currentLane==leftLane){
+            currentLane=middleLane;
+        }else{
+            validMove=false;    
+        }
+    }
+}
+function addVirus(){
+    var sphereGeometry = new THREE.DodecahedronGeometry( virusRadius, 1);
+    var sphereMaterial = new THREE.MeshStandardMaterial( { color: 0x838EDE} )
+    jumping=false;
+    virusSphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+    virusSphere.receiveShadow = true;
+    virusSphere.castShadow=true;
+    scene.add( virusSphere );
+    virusSphere.position.y=virusBaseY;
+    virusSphere.position.z=4.8;
+    currentLane=middleLane;
+    virusSphere.position.x=currentLane;
+}
+function addWorld(){
+    var sides=40;
+    var tiers=40;
+    var sphereGeometry = new THREE.SphereGeometry( worldRadius, sides,tiers);
+    var sphereMaterial = new THREE.MeshStandardMaterial( { color: 0xDB7093 ,shading:THREE.FlatShading} )
+    
+    var vertexIndex;
+    var vertexVector= new THREE.Vector3();
+    var nextVertexVector= new THREE.Vector3();
+    var firstVertexVector= new THREE.Vector3();
+    var offset= new THREE.Vector3();
+    var currentTier=1;
+    var lerpValue=0.5;
+    var heightValue;
+    var maxHeight=0.07;
+    for(var j=1;j<tiers-2;j++){
+        currentTier=j;
+        for(var i=0;i<sides;i++){
+            vertexIndex=(currentTier*sides)+1;
+            vertexVector=sphereGeometry.vertices[i+vertexIndex].clone();
+            if(j%2!==0){
+                if(i==0){
+                    firstVertexVector=vertexVector.clone();
+                }
+                nextVertexVector=sphereGeometry.vertices[i+vertexIndex+1].clone();
+                if(i==sides-1){
+                    nextVertexVector=firstVertexVector;
+                }
+                lerpValue=(Math.random()*(0.75-0.25))+0.25;
+                vertexVector.lerp(nextVertexVector,lerpValue);
+            }
+            heightValue=(Math.random()*maxHeight)-(maxHeight/2);
+            offset=vertexVector.clone().normalize().multiplyScalar(heightValue);
+            sphereGeometry.vertices[i+vertexIndex]=(vertexVector.add(offset));
+        }
+    }
+    rollingGroundSphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+    rollingGroundSphere.receiveShadow = true;
+    rollingGroundSphere.castShadow=false;
+    rollingGroundSphere.rotation.z=-Math.PI/2;
+    scene.add( rollingGroundSphere );
+    rollingGroundSphere.position.y=-24;
+    rollingGroundSphere.position.z=2;
+    addWorldCells();
+}
+function addLight(){
+    var hemisphereLight = new THREE.HemisphereLight(0xfffafa,0x000000, .9)
+    scene.add(hemisphereLight);
+    sun = new THREE.DirectionalLight( 0xcdc1c5, 0.9);
+    sun.position.set( 12,6,-7 );
+    sun.castShadow = true;
+    scene.add(sun);
+    //Set up shadow properties for the sun light
+    sun.shadow.mapSize.width = 256;
+    sun.shadow.mapSize.height = 256;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 50 ;
+}
+function addPathCell(){
+    var options=[0,1,2];
+    var lane= Math.floor(Math.random()*3);
+    addCell(true,lane);
+    options.splice(lane,1);
+    if(Math.random()>0.5){
+        lane= Math.floor(Math.random()*2);
+        addCell(true,options[lane]);
+    }
+}
+function addWorldCells(){
+    var numCells=36;
+    var gap=6.28/36;
+    for(var i=0;i<numCells;i++){
+        addCell(false,i*gap, true);
+        addCell(false,i*gap, false);
+    }
+}
+function addCell(inPath, row, isLeft){
+    var newCell;
+    if(inPath){
+        if(cellsPool.length==0)return;
+        newCell=cellsPool.pop();
+        newCell.visible=true;
+        //console.log("add cell");
+        cellsInPath.push(newCell);
+        sphericalHelper.set( worldRadius-0.3, pathAngleValues[row], -rollingGroundSphere.rotation.x+4 );
+    }else{
+        newCell=createCell();
+        var forestAreaAngle=0;//[1.52,1.57,1.62];
+        if(isLeft){
+            forestAreaAngle=1.68+Math.random()*0.1;
+        }else{
+            forestAreaAngle=1.46-Math.random()*0.1;
+        }
+        sphericalHelper.set( worldRadius-0.3, forestAreaAngle, row );
+    }
+    newCell.position.setFromSpherical( sphericalHelper );
+    var rollingGroundVector=rollingGroundSphere.position.clone().normalize();
+    var cellVector=newCell.position.clone().normalize();
+    newCell.quaternion.setFromUnitVectors(cellVector,rollingGroundVector);
+    newCell.rotation.x+=(Math.random()*(2*Math.PI/10))+-Math.PI/10;
+    
+    rollingGroundSphere.add(newCell);
+}
+
+
+
+function createCell(){
+    var sides=8;
+    var tiers=6;
+    var scalarMultiplier=(Math.random()*(0.25-0.1))+0.05;
+    var midPointVector= new THREE.Vector2();
+    var vertexVector= new THREE.Vector2();
+    var cellGeometry = new THREE.ConeGeometry( 0.5, 0.5, sides, tiers);
+    var cellMaterial = new THREE.MeshStandardMaterial( { color: 0xFF0000,shading:THREE.FlatShading  } );
+    var offset;
+    midPointVector=cellGeometry.vertices[0].clone();
+    var currentTier=0;
+    var vertexIndex;
+    blowUpCell(cellGeometry.vertices,sides,0,scalarMultiplier);
+    tightenCell(cellGeometry.vertices,sides,1);
+    blowUpCell(cellGeometry.vertices,sides,2,scalarMultiplier*1.1,true);
+    tightenCell(cellGeometry.vertices,sides,3);
+    blowUpCell(cellGeometry.vertices,sides,4,scalarMultiplier*1.2);
+    tightenCell(cellGeometry.vertices,sides,5);
+    var cellTrunkGeometry = new THREE.CylinderGeometry( 0.1, 0.1,0.1);
+    var trunkMaterial = new THREE.MeshStandardMaterial( { color: 0xFF0000,shading:THREE.FlatShading  } );
+    var cellTrunk = new THREE.Mesh( cellTrunkGeometry, trunkMaterial );
+    cellTrunk.position.y=0.20;
+    cellTrunk.position.y=(Math.random()*0.9);
+    cellTrunk.rotation.y=(Math.random()*(Math.PI));
+    var cell =new THREE.Object3D();
+    cell.add(cellTrunk);
+    return cell;
+}
+function blowUpCell(vertices,sides,currentTier,scalarMultiplier,odd){
+    var vertexIndex;
+    var vertexVector= new THREE.Vector3();
+    var midPointVector=vertices[0].clone();
+    var offset;
+    for(var i=0;i<sides;i++){
+        vertexIndex=(currentTier*sides)+1;
+        vertexVector=vertices[i+vertexIndex].clone();
+        midPointVector.y=vertexVector.y;
+        offset=vertexVector.sub(midPointVector);
+        if(odd){
+            if(i%2===0){
+                offset.normalize().multiplyScalar(scalarMultiplier/6);
+                vertices[i+vertexIndex].add(offset);
+            }else{
+                offset.normalize().multiplyScalar(scalarMultiplier);
+                vertices[i+vertexIndex].add(offset);
+                vertices[i+vertexIndex].y=vertices[i+vertexIndex+sides].y+0.05;
+            }
+        }else{
+            if(i%2!==0){
+                offset.normalize().multiplyScalar(scalarMultiplier/6);
+                vertices[i+vertexIndex].add(offset);
+            }else{
+                offset.normalize().multiplyScalar(scalarMultiplier);
+                vertices[i+vertexIndex].add(offset);
+                vertices[i+vertexIndex].y=vertices[i+vertexIndex+sides].y+0.05;
+            }
+        }
+    }
+}
+function tightenCell(vertices,sides,currentTier){
+    var vertexIndex;
+    var vertexVector= new THREE.Vector3();
+    var midPointVector=vertices[0].clone();
+    var offset;
+    for(var i=0;i<sides;i++){
+        vertexIndex=(currentTier*sides)+1;
+        vertexVector=vertices[i+vertexIndex].clone();
+        midPointVector.y=vertexVector.y;
+        offset=vertexVector.sub(midPointVector);
+        offset.normalize().multiplyScalar(0.06);
+        vertices[i+vertexIndex].sub(offset);
+    }
+}
+
+function update(){
+
+    rollingGroundSphere.rotation.x += rollingSpeed;
+    virusSphere.rotation.x -= virusRollingSpeed;
+    if(virusSphere.position.y<=virusBaseY){
+        jumping=false;
+        bounceValue=(Math.random()*0.04)+0.005;
+    }
+    virusSphere.position.y+=bounceValue;
+    virusSphere.position.x=THREE.Math.lerp(virusSphere.position.x,currentLane, 2*clock.getDelta());//clock.getElapsedTime());
+    bounceValue-=gravity;
+    if(clock.getElapsedTime()>cellReleaseInterval){
+        clock.start();
+        addPathCell();
+    }
+    doCellLogic();
+    render();
+    requestAnimationFrame(update);//request next update
+}
+function doCellLogic(){
+    var oneCell;
+    var cellPos = new THREE.Vector3();
+}
+    
+function render(){
+    renderer.render(scene, camera);//draw
+}
+
+function onWindowResize() {
+    //resize & align
+    sceneHeight = window.innerHeight;
+    sceneWidth = window.innerWidth;
+    renderer.setSize(sceneWidth, sceneHeight);
+    camera.aspect = sceneWidth/sceneHeight;
+    camera.updateProjectionMatrix();
+}
+
+// var geometry = new THREE.CircleGeometry( 1, 32 );
+// var material = new THREE.MeshBasicMaterial( { color: 0xffff00, alpha: 0 } );
+// var circle = new THREE.Mesh( geometry, material );
+// scene.add(circle)
+document.addEventListener( 'mousedown', onCircleMouseDown, false );
+function onCircleMouseDown( event ) 
+{console.log("Click.");
+window.open('boss.html','_self');
+}
+  // circle.position.set(-3, 1.8, 0);
+
+// var geometry = new THREE.CircleGeometry( 1, 32 );
+// var material = new THREE.MeshBasicMaterial( { color: 0xffff00, alpha: 0 } );
+// var circle2 = new THREE.Mesh( geometry, material );
+// scene.add(circle2)
+//   .addEventListener( 'mousedown', onCircle2MouseDown, false );
+// function onCircle2MouseDown( event ) 
+// {console.log("Click.");
+// window.open('level.html','_self');
+// }
+// circle2.position.set(0.08, 2.05, 0);
+
+// var geometry = new THREE.CircleGeometry( 1, 32 );
+// var material = new THREE.MeshBasicMaterial( { color: 0xffff00, alpha: 0 } );
+// var circle3 = new THREE.Mesh( geometry, material );
+// scene.add(circle3)
+//   circle3.position.set(3, 1.8, 0);
+//   circle3.addEventListener( 'mousedown', onCircle2MouseDown, false );
+// function onCircle2MouseDown( event ) 
+// {console.log("Click.");
+// window.open('level.html','_self');
+// }
+});
+
+
+</script>
+</body>
+</html>
